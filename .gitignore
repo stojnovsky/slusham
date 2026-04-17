@@ -1,0 +1,12 @@
+/target
+.DS_Store
+.claude
+venv
+__pycache__
+monitor.log
+chunks
+chunks/*
+audio
+audio/*
+frames
+frames/*
