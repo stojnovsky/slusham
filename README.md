@@ -9,7 +9,7 @@ Each 10-second chunk of video is analysed on two independent channels:
 | **Video** | ffmpeg extracts key frames → sent to a vision model (LLaVA, BakLLaVA, moondream …) |
 | **Audio** | faster-whisper transcribes Bulgarian speech → transcript sent to a text model |
 
-Alerts are printed to the terminal and appended to `alerts.jsonl`.
+Alerts are printed to the terminal immediately when detected. Each session writes its own log and alert file under `sessions/<title>/`.
 
 ---
 
@@ -57,26 +57,59 @@ chmod +x run.sh
 
 ---
 
+## Sessions
+
+Every run creates an isolated session directory under `sessions/`. Use `--title` / `-t` to give it a meaningful name:
+
+```bash
+./run.sh -t "секция_12_София"   test/recording.mp4
+./run.sh -t "камера_А_зала_3"  rtsp://192.168.1.100/stream
+./run.sh -t "секция_5_Пловдив" webcam
+```
+
+If no title is given, a timestamp is used automatically (e.g. `session_20260417_184200`).
+
+Each session directory contains:
+
+```
+sessions/
+  секция_12_София/
+    monitor.log      ← full log for this session only
+    alerts.jsonl     ← suspicious events, written immediately on detection
+    chunks/          ← temporary audio/video segments (auto-managed)
+  камера_А_зала_3/
+    monitor.log
+    alerts.jsonl
+    chunks/
+```
+
+Sessions are completely independent — running multiple terminals with different titles monitors multiple rooms simultaneously.
+
+---
+
 ## Running
 
 ```bash
-# Local video file
+# Named session — recommended
+./run.sh -t "секция_12_София" test/recording.mp4
+
+# Local video file (auto-named session)
 ./run.sh test/recording.mp4
 
 # Webcam (device index 0)
-./run.sh webcam
+./run.sh -t "камера_вход" webcam
 
 # IP camera via RTSP
-./run.sh rtsp://192.168.1.100/stream
+./run.sh -t "зала_А" rtsp://192.168.1.100/stream
 
 # Debug mode — shows ffmpeg output and API details
-./run.sh test/recording.mp4 --debug
+./run.sh -t "тест" test/recording.mp4 --debug
 
 # Limit concurrent analysis threads (default: 4)
-./run.sh rtsp://... --workers 2
+./run.sh -t "зала_Б" rtsp://... --workers 2
 ```
 
-Stop at any time with **Ctrl+C**. A summary of all alerts is printed on exit.
+Stop at any time with **Ctrl+C**. A summary of all alerts for that session is printed on exit.
 
 ---
 
@@ -178,22 +211,35 @@ Lower = more sensitive (more false positives). Higher = stricter.
 ### Terminal
 
 ```
-  18:42:11  OK  chunk_0003.mp4  audio: Обсъждат процедурата по броене.
+================================================================
+  Election Room Monitor  (audio)
+================================================================
+  Session  : секция_12_София
+  Alerts   : sessions/секция_12_София/alerts.jsonl
+  Log      : sessions/секция_12_София/monitor.log
+  ...
+----------------------------------------------------------------
+
+  18:42:11  OK  chunk_0003.wav  audio: Обсъждат процедурата по броене.
 
 !!! ALERT [HIGH]  18:42:34
-    Chunk  : chunk_0007.mp4
-    AUDIO  : [87%] vote direction, vote buying
-    Quote  : "пиши за тях, така се договорихме"
+    Session : секция_12_София
+    Chunk   : chunk_0007.wav
+    AUDIO   : [87%] vote direction, vote buying
+    Quote   : "пиши за тях, така се договорихме"
 ```
 
-### alerts.jsonl
+Alerts appear in the terminal **immediately** when detected — they are not buffered until process exit.
 
-Every alert is appended as a JSON line:
+### sessions/\<title\>/alerts.jsonl
+
+Every alert is appended as a JSON line the moment it is detected. The file is kept open with line buffering so it is always up-to-date on disk:
 
 ```json
 {
+  "session": "секция_12_София",
   "timestamp": "2026-04-17T18:42:34.123456",
-  "chunk": "chunks/chunk_0007.mp4",
+  "chunk": "sessions/секция_12_София/chunks/chunk_0007.wav",
   "video": null,
   "audio": {
     "suspicious": true,
@@ -213,19 +259,25 @@ Every alert is appended as a JSON line:
 
 ```
 video-elections/
-├── main.py            # CLI entry point
-├── monitor.py         # Orchestration — runs video + audio per chunk
-├── segmenter.py       # ffmpeg wrapper — splits stream into 10s chunks
-├── analyzer.py        # Frame extraction + vision model query
-├── audio_analyzer.py  # Audio extraction + Whisper + text model query
-├── config.py          # All settings (override with env vars)
-├── run.sh             # Convenience wrapper — uses venv/bin/python
+├── main.py               # CLI entry point (--title, --workers, --debug)
+├── monitor.py            # Orchestration — runs video + audio per chunk
+├── segmenter.py          # ffmpeg wrapper — splits stream into 10s chunks
+├── analyzer.py           # Frame extraction + vision model query
+├── audio_analyzer.py     # Audio extraction + Whisper + text model query
+├── config.py             # All settings (override with env vars)
+├── run.sh                # Convenience wrapper — uses venv/bin/python
 ├── requirements.txt
-├── chunks/            # Temporary video segments (auto-created)
-├── frames/            # Temporary frame JPEGs (auto-created, deleted after use)
-├── audio/             # Temporary WAV files (auto-created, deleted after use)
-├── alerts.jsonl       # Persistent alert log
-└── monitor.log        # Full application log
+├── frames/               # Temporary frame JPEGs (deleted after each chunk)
+├── audio/                # Temporary WAV files (deleted after each chunk)
+└── sessions/
+    ├── секция_12_София/
+    │   ├── monitor.log   # Log for this session
+    │   ├── alerts.jsonl  # Alerts for this session (written immediately)
+    │   └── chunks/       # Temporary segments for this session
+    └── камера_А_зала_3/
+        ├── monitor.log
+        ├── alerts.jsonl
+        └── chunks/
 ```
 
 ---
