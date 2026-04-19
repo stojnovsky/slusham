@@ -154,8 +154,8 @@ The model is downloaded automatically from Hugging Face on first use and then ca
 ### Change the LM Studio model or endpoint
 
 ```bash
-LM_STUDIO_MODEL=llava-v1.6-mistral-7b ./run.sh recording.mp4
-LM_STUDIO_BASE_URL=http://192.168.1.50:1234/v1 ./run.sh recording.mp4
+AI_MODEL=llava-v1.6-mistral-7b ./run.sh recording.mp4
+AI_BASE_URL=http://192.168.1.50:1234/v1 ./run.sh recording.mp4
 ```
 
 ### Chunk duration and frames

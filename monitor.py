@@ -195,8 +195,8 @@ class ElectionMonitor:
         print(f"  Alerts   : {self._alerts_path}")
         print(f"  Log      : {self.session_dir / 'monitor.log'}")
         print(f"  Input    : {self.input_source}")
-        print(f"  Model    : {config.LM_STUDIO_MODEL}")
-        print(f"  Endpoint : {config.LM_STUDIO_BASE_URL}")
+        print(f"  Model    : {config.AI_MODEL}")
+        print(f"  Endpoint : {config.AI_BASE_URL}")
         print(f"  Chunk    : {config.CHUNK_DURATION}s  |  "
               f"Video: {video_status}  |  Audio: {audio_status}")
         if config.AUDIO_ENABLED:

@@ -110,9 +110,9 @@ from analyzer import _model_sem   # noqa: E402  (circular-safe: no class init)
 class AudioAnalyzer:
     def __init__(self):
         self.client = OpenAI(
-            base_url=config.LM_STUDIO_BASE_URL,
-            api_key=config.LM_STUDIO_API_KEY,
-            timeout=config.LM_STUDIO_TIMEOUT,
+            base_url=config.AI_BASE_URL,
+            api_key=config.AI_API_KEY,
+            timeout=config.AI_TIMEOUT,
         )
         self.audio_dir = Path(config.AUDIO_DIR)
         self.audio_dir.mkdir(parents=True, exist_ok=True)
@@ -299,7 +299,7 @@ class AudioAnalyzer:
             ]:
                 try:
                     resp = self.client.chat.completions.create(
-                        model=config.LM_STUDIO_MODEL,
+                        model=config.AI_MODEL,
                         messages=msgs,
                         temperature=0.1,
                         max_tokens=350,

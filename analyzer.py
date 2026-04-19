@@ -103,9 +103,9 @@ class _JinjaTemplateError(Exception):
 class ChunkAnalyzer:
     def __init__(self):
         self.client = OpenAI(
-            base_url=config.LM_STUDIO_BASE_URL,
-            api_key=config.LM_STUDIO_API_KEY,
-            timeout=config.LM_STUDIO_TIMEOUT,
+            base_url=config.AI_BASE_URL,
+            api_key=config.AI_API_KEY,
+            timeout=config.AI_TIMEOUT,
         )
         self.frames_root = Path(config.FRAMES_DIR)
         self.frames_root.mkdir(parents=True, exist_ok=True)
@@ -158,10 +158,10 @@ class ChunkAnalyzer:
                         "Switching to text/motion mode.\n"
                         "  To enable vision, load a vision model in LM Studio\n"
                         "  (e.g. llava-v1.6-mistral-7b, moondream2, bakllava).",
-                        config.LM_STUDIO_MODEL,
+                        config.AI_MODEL,
                     )
                 else:
-                    log.info("Vision mode confirmed for '%s'.", config.LM_STUDIO_MODEL)
+                    log.info("Vision mode confirmed for '%s'.", config.AI_MODEL)
 
     # ------------------------------------------------------------------ #
     #  Frame extraction — seek-based (more reliable than fps filter)      #
@@ -361,7 +361,7 @@ class ChunkAnalyzer:
         """
         try:
             return self.client.chat.completions.create(
-                model=config.LM_STUDIO_MODEL,
+                model=config.AI_MODEL,
                 messages=messages,
                 temperature=0.1,
                 max_tokens=max_tokens,
@@ -375,7 +375,7 @@ class ChunkAnalyzer:
                         "  Retrying with flat message format (workaround).\n"
                         "  Permanent fix: in LM Studio open My Models → '%s' →\n"
                         "  Prompt Template and switch to the lmstudio-community version.",
-                        config.LM_STUDIO_MODEL, config.LM_STUDIO_MODEL,
+                        config.AI_MODEL, config.AI_MODEL,
                     )
                 raise _JinjaTemplateError(str(exc)) from exc
             raise
