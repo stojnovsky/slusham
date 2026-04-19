@@ -28,31 +28,60 @@ log = logging.getLogger(__name__)
 
 # ── Prompts ──────────────────────────────────────────────────────────── #
 
-_SYSTEM = """You are a security monitor for an election counting room in Bulgaria.
-Analyze the following speech transcript from a 10-second audio segment.
-The transcript is in Bulgarian. Evaluate it in Bulgarian — do not require translation.
+# Primes faster-whisper with Bulgarian election vocabulary.
+# This is the single most effective way to prevent Russian mis-detection —
+# Whisper sees real Bulgarian words first and anchors to that language.
+_WHISPER_PROMPT = (
+    "Преброяване на бюлетини. Секционна избирателна комисия. "
+    "Протокол. Урна. Действителни и недействителни бюлетини. "
+    "Преференции. Партии и коалиции. Изборен ден."
+)
 
-Suspicious speech includes:
-1. Instructions to write on, alter, or forge ballots/protocols
-   (e.g. "напиши това", "смени числото", "добави гласове", "оправи го")
-2. Instructions to remove, conceal, or destroy election documents
-   (e.g. "вземи ги", "скрий го", "изхвърли", "сложи в чантата")
-3. Coordination language implying fraud
-   (e.g. "преди да видят", "не им казвай", "бързо", "никой не гледа")
-4. Coercion, pressure, or secret commands directed at election workers
-5. Any discussion of falsifying counts or swapping ballots
-6. Instructions or discussion about making valid ballots invalid
-   (e.g. "направи я невалидна", "развали я", "сложи знак", "зачеркни",
-   "тя е невалидна" когато не е, "бракувай я", "недействителна")
-7. Incorrect or fraudulent classification of ballots as invalid/spoiled
-   (e.g. "тури я при невалидните", "тя не се брои", "не важи",
-   "хвърли при развалените")
-8. Discussion of who to vote for, vote-buying, or instructing others how to mark ballots
-   — this is a strong indicator of organised fraud or voter coercion:
-   (e.g. "за кого ще пишеш", "за кого пишеш", "пиши за ...", "гласувай за ...",
-   "кого трябва да пишем", "как да пишем", "трябва да пишем за ...",
-   "платиха ми да пиша за", "дадоха ми пари", "договорихме се за",
-   "знаеш ли за кого", "всички пишем за", "покажи ми как да отбележа")
+_SYSTEM = """You are a security monitor for a Bulgarian election ballot-counting room.
+The transcript is in BULGARIAN. Do NOT interpret it as Russian or any other language.
+Evaluate it directly in Bulgarian — do not translate.
+Flag any speech that violates official counting rules or indicates fraud.
+
+WRITING & DOCUMENT TAMPERING
+Instructions to write on, alter, or forge ballots or protocols:
+"напиши това", "смени числото", "добави гласове", "оправи го", "зачеркни", "задраскай"
+
+REMOVING OR CONCEALING BALLOTS
+Instructions to remove, hide, or destroy election materials:
+"вземи ги", "скрий го", "изхвърли", "сложи в чантата", "махни ги", "прибери бюлетините"
+
+FRAUD COORDINATION
+Secretive coordination language suggesting planned fraud:
+"преди да видят", "не им казвай", "бързо", "никой не гледа", "докато не са тук", "тихо"
+
+INVALID BALLOT MANIPULATION
+Making valid ballots invalid, or fraudulently classifying them:
+"направи я невалидна", "развали я", "сложи знак", "бракувай я", "недействителна",
+"тури я при невалидните", "тя не се брои", "не важи", "хвърли при развалените"
+NOTE: machine-vote ballots (от машинно гласуване) can NEVER be invalid — flag immediately if discussed.
+
+VOTE DIRECTION & VOTE BUYING
+Instructing how to vote, or buying votes:
+"за кого ще пишеш", "пиши за ...", "гласувай за ...", "кого трябва да пишем",
+"платиха ми да пиша за", "дадоха ми пари", "договорихме се за", "всички пишем за",
+"покажи ми как да отбележа", "евро", "пари"
+
+MIXING BALLOTS FROM DIFFERENT URNS
+Ballots from different urns must be counted separately:
+"смесете ги", "сложи от другата урна", "смесете двете купчини"
+
+COUNTING IRREGULARITIES
+Announced verbal count not matching what is written, or skipping the initial total count:
+Numbers called out that seem inconsistent, or "не броим в началото", "пропуснете общия брой"
+
+UNAUTHORISED PRESENCE
+Letting in people not allowed during counting:
+"влез", "остани вътре", "не ги пускай навън", discussion of outsiders being present
+
+EARLY STREAM TERMINATION
+Stopping the broadcast before the protocol is signed and ballot bags sealed:
+"спри камерата", "изключи видеото", "спри излъчването", "изключете устройството"
+NOTE: the stream must stay on until: protocol signed → results announced → bags sealed.
 
 Reply with ONLY a valid JSON object — no markdown, no extra text:
 {
@@ -83,6 +112,7 @@ class AudioAnalyzer:
         self.client = OpenAI(
             base_url=config.LM_STUDIO_BASE_URL,
             api_key=config.LM_STUDIO_API_KEY,
+            timeout=config.LM_STUDIO_TIMEOUT,
         )
         self.audio_dir = Path(config.AUDIO_DIR)
         self.audio_dir.mkdir(parents=True, exist_ok=True)
@@ -212,11 +242,12 @@ class AudioAnalyzer:
                         str(wav),
                         beam_size=10,
                         language=config.AUDIO_LANGUAGE,
-                        vad_filter=True,          # skip non-speech segments
-                        vad_parameters={
-                            "min_silence_duration_ms": 300,
-                        },
-                        temperature=0.0,          # greedy — more stable for short clips
+                        # Bulgarian election vocabulary primes the model and
+                        # prevents it from drifting to Russian (same Cyrillic script).
+                        initial_prompt=_WHISPER_PROMPT,
+                        vad_filter=True,
+                        vad_parameters={"min_silence_duration_ms": 300},
+                        temperature=0.0,          # greedy — stable for short clips
                         condition_on_previous_text=False,
                     )
                     return " ".join(s.text for s in segs).strip() or _EMPTY_TRANSCRIPT

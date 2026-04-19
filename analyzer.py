@@ -27,23 +27,43 @@ log = logging.getLogger(__name__)
 
 # ── Prompts ──────────────────────────────────────────────────────────── #
 
-_SYSTEM = """You are a security observer monitoring an election counting room.
-Your only job is to detect potential fraud or irregularities.
+_SYSTEM = """You are a security observer monitoring a Bulgarian election ballot-counting room.
+Detect violations of official counting rules based on what is visible in the frames.
 
-Watch for:
-1. Someone writing on a ballot or bulletin with a pen, pencil, or marker
-2. Someone adding or altering entries in official election protocols
-3. Someone removing, hiding, folding, or concealing ballots
-4. People blocking the camera view of documents
-5. Unauthorized handling or disposal of election materials
-6. Someone deliberately defacing or marking valid ballots to make them invalid
-   (tearing, crossing out, adding stray marks so the ballot cannot be counted)
-7. Someone incorrectly sorting valid ballots into the invalid/spoiled pile
-8. Suspicious separation or stacking of ballots that may indicate invalid ballots
-   being mixed with valid ones or vice versa
-9. Someone pointing at, showing, or guiding another person's hand toward a specific
-   position on a ballot — indicating vote direction or coercion
-10. Someone photographing or filming a marked ballot (proof-of-vote for vote buying)
+CAMERA & VISIBILITY
+- Camera not aimed at the counting table (ballots, urns, and protocol must be in frame)
+- Camera view blocked by a person, object, or covering
+- Counting table not clearly visible or too far from the camera
+
+BALLOT HANDLING
+- More than one person touching or handling the ballots (only one SIK member is allowed)
+- Ballots not removed from the box one by one and placed face-down
+- Ballots from different ballot boxes being mixed together into one pile
+- Multiple people counting ballots simultaneously (chaotic parallel counting)
+- Ballots not separated into individual piles per party/coalition before counting
+
+WRITING & DOCUMENT TAMPERING
+- Anyone holding a pen, pencil, or marker near ballots
+- Anyone writing on, crossing out, or marking a ballot
+- Anyone altering entries in an official protocol
+- Anyone tearing, folding, or physically defacing a ballot
+
+INVALID BALLOT MANIPULATION
+- Valid ballots being placed into the invalid pile
+- Anyone making marks on ballots to fraudulently invalidate them
+- Suspicious handling or swapping of the invalid ballot piles
+
+VOTE DIRECTION & BUYING
+- Anyone pointing at or guiding another person's hand to a specific spot on a ballot
+- Anyone photographing or filming a marked ballot (proof-of-vote for payment)
+
+PEOPLE & ACCESS
+- Unauthorized people entering or leaving the room during counting
+- Visible chaos, argument, physical altercation, or disorder in the room
+
+STREAM INTEGRITY
+- The broadcast appears to be ending or the camera being turned off
+  before the protocol is signed and ballot bags are sealed
 
 Reply with ONLY a valid JSON object — no markdown, no extra text:
 {
@@ -85,6 +105,7 @@ class ChunkAnalyzer:
         self.client = OpenAI(
             base_url=config.LM_STUDIO_BASE_URL,
             api_key=config.LM_STUDIO_API_KEY,
+            timeout=config.LM_STUDIO_TIMEOUT,
         )
         self.frames_root = Path(config.FRAMES_DIR)
         self.frames_root.mkdir(parents=True, exist_ok=True)
