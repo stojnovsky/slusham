@@ -70,6 +70,13 @@ class VideoSegmenter:
             stderr=subprocess.PIPE,
         )
 
+        # Drain ffmpeg's stderr in a background thread.
+        # Without this the OS pipe buffer (~64 KB) fills up after ~13 chunks
+        # and ffmpeg blocks, freezing the entire program.
+        threading.Thread(
+            target=self._drain_stderr, daemon=True, name="ffmpeg-stderr"
+        ).start()
+
         self._watcher = threading.Thread(
             target=self._watch_loop, daemon=True, name="chunk-watcher"
         )
@@ -81,11 +88,15 @@ class VideoSegmenter:
         if self._process and self._process.poll() is None:
             self._process.terminate()
             self._process.wait(timeout=5)
+        if self._watcher and self._watcher.is_alive():
+            self._watcher.join(timeout=5)
 
     def wait(self):
         if self._process:
             self._process.wait()
             self._running = False
+        if self._watcher and self._watcher.is_alive():
+            self._watcher.join()
 
     # ------------------------------------------------------------------ #
     #  ffmpeg command builders                                             #
@@ -123,6 +134,18 @@ class VideoSegmenter:
             pattern,
             "-y",
         ]
+
+    # ------------------------------------------------------------------ #
+    #  stderr drain                                                        #
+    # ------------------------------------------------------------------ #
+
+    def _drain_stderr(self):
+        """Read and discard ffmpeg stderr so the pipe never fills."""
+        try:
+            for line in self._process.stderr:
+                log.debug("ffmpeg: %s", line.decode(errors="replace").rstrip())
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------ #
     #  Watcher loop                                                        #

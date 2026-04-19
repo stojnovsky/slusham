@@ -1,8 +1,8 @@
 import os
 
 # LM Studio — OpenAI-compatible endpoint
-LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
-# LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://192.168.0.117:1234/v1")
+# LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
+LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://192.168.0.117:1234/v1")
 LM_STUDIO_MODEL    = os.getenv("LM_STUDIO_MODEL",    "openai/gpt-oss-20b")
 # LM_STUDIO_MODEL    = os.getenv("LM_STUDIO_MODEL",    "openai/gpt-oss-120b")
 # LM_STUDIO_MODEL    = os.getenv("LM_STUDIO_MODEL",    "llava-v1.6-mistral-7b")

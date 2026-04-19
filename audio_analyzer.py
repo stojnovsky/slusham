@@ -64,7 +64,7 @@ VOTE DIRECTION & VOTE BUYING
 Instructing how to vote, or buying votes:
 "за кого ще пишеш", "пиши за ...", "гласувай за ...", "кого трябва да пишем",
 "платиха ми да пиша за", "дадоха ми пари", "договорихме се за", "всички пишем за",
-"покажи ми как да отбележа", "евро", "пари"
+"покажи ми как да отбележа", "евро", "пари", "да помогнем", "помощ", "попълни"
 
 MIXING BALLOTS FROM DIFFERENT URNS
 Ballots from different urns must be counted separately:
